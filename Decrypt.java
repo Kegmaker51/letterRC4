@@ -38,130 +38,67 @@ public class Decrypt
     
     public static void main(String[] args) throws Exception
     {
-        //Input checking begins here
+        Utils utilities = new Utils();
+        
         if(args.length != 3)
             {
-                System.err.println("Usage: java Decrypt <SecretKey> <CiphertextFile> <PlaintextFile> ");
-                System.err.println("Your secret key must be a permutation of the letters A/a - Z/z");
-                System.err.println("The plaintext file must be in the current directory");
-                System.err.println("The ciphertext file must be in the current directory");
-                throw new IllegalArgumentException();
+                utilities.argumentUsageError();
             }
-        
         FileInputStream input = null;
         FileOutputStream output = null;
-
+        
         char [] key = new char [args[0].length()];
         key = args[0].toCharArray();
                 
-
         int incoming;
-
-        //Needed for the RC4 algo
-        int alpha = 0;
-        int beta = 0;
                 
         //Input testing variables
         Boolean badKey = false;
-        int keySize = 0;
-        String testing = new String(args[0]);
+        int keySize = args[0].length();
         
-        int [] convertedKey = new int [args[0].length()];
-        int keyConverted = 0;
-        
+        int [] convertedKey = new int [keySize];
 
         //Key Conversion from UNICODE to Integer Representations 0 - 25
-        for(int index = 0; index < args[0].length(); index++)
-            {
-                int value = (char)key[index];
-
-                if(value >= 48 && value <= 57)
-                    {
-                        badKey = true;
-                        break;
-                    }
-
-                if(value >= 65 && value <= 90)
-                    {
-                        convertedKey[index] = value - 65;
-                    }
-                else if (value >= 97 && value <= 122)
-                    {
-                        convertedKey[index] = value - 97;
-                    }
-
-            }
-
+        convertedKey = utilities.keyConversion(key);
+        
+        for(int index = 0; index < keySize; index++)
+            if(convertedKey[index] == -1)
+                {
+                    badKey = true;
+                    break;
+                }
+        
         //Input Error Message (Errors specifically involving the key)
         if(badKey || keySize != 26)
             {
-                System.err.println("Usage: java Decrypt <SecretKey> <CiphertextFile> <PlaintextFile>");
-                System.err.println("The secret key must be a permutation of the letters A/a - Z/z");
-                System.err.println("Thus the secret key must be 26 characters long");
-                throw new IllegalArgumentException();
+                utilities.keyUsageError();
             }
-        //Program Assumes Input is Valid From This Point On
-
-        //User Input Processing
+        
+        //Program Assumes Valid Input Past This Point
+        //Read in user inputted plaintext
         try
             {
-                //Files prepared for I/O
+                //User submitted files are prepared for I/O
                 input = new FileInputStream(args[1]);
                 output = new FileOutputStream(args[2]);
-
-                //Input file reading
+        
                 while((incoming = input.read()) != -1)
-                    {   
-                        //Checking for valid input (Just in case)
-                        if(incoming >= 65 && incoming <= 90)
+                    {
+                        //RC4 Decryption
+                        int plaintext = utilities.decrypt(incoming, convertedKey);
+                        if(plaintext != -1)
                             {
-                                //Read bit is converted from UNICODE to Numeric Representation 0 - 25
-                                incoming  = incoming - 65;
-
-                                //Start of RC4 PRNG Algo
-                                alpha = (alpha + 1) % 26;
-                                beta = (beta + convertedKey[alpha]) % 26;
-
-                                //Swap Portion of RC4 Algo
-                                int temporary = convertedKey[alpha];
-                                convertedKey[alpha] = convertedKey[beta];
-                                convertedKey[beta] = temporary;
-
-                                //Keystream bit generations
-                                int keyBit = convertedKey[(convertedKey[alpha] + convertedKey[beta]) % 26];
-
-                                //Decryption of incoming Ciphertext
-                                int cipher = (incoming  -  keyBit) % 26;
-                                
-                                //Check if modulo is negative to add modulo
-                                if(cipher < 0)
-                                    {
-                                        cipher += 26;
-                                    }
-                                
-                                //Write Decrypted Plaintext
-                                output.write(cipher + 65);
-                            }
-                        /*
-                         *Should the input file contain invalid characters then
-                         *that would indicate that the file was not encrypted
-                         *with the Encrypt.java program that comes with this
-                         *program.
-                         */
-                        else
-                            {
-                                System.err.println("Invalid Characters Detected!");
-                                System.err.println("Please check that your input file is correct.");
-                                throw new IOException();
+                                //Ciphertext bit written to file
+                                output.write(plaintext);
                             }
                     }
             }
-        //Should anything go wrong with the File IO
+        //Incase anything should happen the program stands ready
         catch(IOException io)
             {
-                throw io;
+                throw new IOException();
             }
-        
+
     }//end main
     
 }//end Decrypt

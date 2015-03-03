@@ -36,78 +36,43 @@ public class Encrypt
     public static void main(String[] args) throws Exception
     {           
         //Input checking begins here
+        Utils utilities = new Utils();
+        
         if(args.length != 3)
             {
-                System.err.println("Usage: java Encrypt <SecretKey> <PlaintextFile> <CiphertextFile> ");
-                System.err.println("Your secret key must be a permutation of the letters A/a - Z/z");
-                System.err.println("The plaintext file must be in the current directory");
-                System.err.println("The ciphertext file must be in the current directory");
-                throw new IllegalArgumentException();
+                utilities.argumentUsageError();
             }
-
         FileInputStream input = null;
         FileOutputStream output = null;
-
+        
         char [] key = new char [args[0].length()];
         key = args[0].toCharArray();
                 
-
         int incoming;
-
-        //Needed for the RC4 algo
-        int alpha = 0;
-        int beta = 0;
                 
         //Input testing variables
         Boolean badKey = false;
-        int keySize = 0;
-        String testing = new String(args[0]);
+        int keySize = args[0].length();
         
-        int [] convertedKey = new int [args[0].length()];
-        int keyConverted = 0;
-        
+        int [] convertedKey = new int [keySize];
 
         //Key Conversion from UNICODE to Integer Representations 0 - 25
-        for(int index = 0; index < args[0].length(); index++)
-            {
-                int value = (char)key[index];
-
-                if(value >= 48 && value <= 57)
-                    {
-                        badKey = true;
-                        break;
-                    }
-
-                if(value >= 65 && value <= 90)
-                    {
-                        convertedKey[index] = value - 65;
-                    }
-                else if (value >= 97 && value <= 122)
-                    {
-                        convertedKey[index] = value - 97;
-                    }
-
-            }
-
+        convertedKey = utilities.keyConversion(key);
+        
+        for(int index = 0; index < keySize; index++)
+            if(convertedKey[index] == -1)
+                {
+                    badKey = true;
+                    break;
+                }
+        
         //Input Error Message (Errors specifically involving the key)
         if(badKey || keySize != 26)
             {
-                System.err.println("Usage: java Decrypt <SecretKey> <CiphertextFile> <PlaintextFile>");
-                System.err.println("The secret key must be a permutation of the letters A/a - Z/z");
-                System.err.println("Thus the secret key must be 26 characters long");
-                throw new IllegalArgumentException();
-            }
-        //Input Error Message (Errors specifically involving the key)
-        if(args[0].length() != convertedKey.length || keySize != 26)
-            {
-                System.err.println("Usage: java Encrypt <SecretKey> <PlaintextFile> <CiphertextFile>");
-                System.err.println("The secret key must be a permutation of the letters A/a - Z/z");
-                System.err.println("Thus the secret key must be 26 characters long");
-                throw new IllegalArgumentException();
+                utilities.keyUsageError();
             }
         
         //Program Assumes Valid Input Past This Point
-
         //Read in user inputted plaintext
         try
             {
@@ -116,59 +81,20 @@ public class Encrypt
                 output = new FileOutputStream(args[2]);
         
                 while((incoming = input.read()) != -1)
-                    {   
-                        if(incoming >= 65 && incoming <= 90) 
+                    {
+                        //RC4 Encryption
+                        int cipher = utilities.encrypt(incoming, convertedKey);
+                        if(cipher != -1)
                             {
-                                //Letter is uppercase  A - Z
-                                incoming  = incoming - 65;
-
-                                //Start RC4 PRNG Algo
-                                alpha = (alpha + 1) % 26;
-                                beta = (beta + convertedKey[alpha]) % 26;
-
-                                //Swap Part of RC4 PRNG Algo
-                                int temporary = convertedKey[alpha];
-                                convertedKey[alpha] = convertedKey[beta];
-                                convertedKey[beta] = temporary;
-
-                                //Generated bit of the Keystream
-                                int keyBit = convertedKey[(convertedKey[alpha] + convertedKey[beta]) % 26];
-
-                                //Incoming Plaintext Encrypted
-                                int cipher = (incoming  + keyBit) % 26;
-
                                 //Ciphertext bit written to file
-                                output.write(cipher + 65);
-                            }
-                        else if (incoming >= 97 && incoming <= 122)
-                            {
-                                //Letter is lowercase a - z
-                                incoming = incoming - 97;
-
-                                //Start RC4 Algo
-                                alpha = (alpha + 1) % 26;
-                                beta = (beta + convertedKey[alpha]) % 26;
-
-                                //Swap Part of Algo
-                                int temporary = convertedKey[alpha];
-                                convertedKey[alpha] = convertedKey[beta];
-                                convertedKey[beta] = temporary;
-
-                                //Generated bit of Keystream
-                                int keyBit = convertedKey[(convertedKey[alpha] + convertedKey[beta]) % 26];
-
-                                //Incoming Plaintext Encrypted
-                                int cipher = (incoming  + keyBit) % 26;
-
-                                //Ciphertext bit written to file
-                                output.write(cipher + 65);
+                                output.write(cipher);
                             }
                     }
             }
         //Incase anything should happen the program stands ready
         catch(IOException io)
             {
-                throw io;
+                throw new IOException();
             }
 
     }//end main
